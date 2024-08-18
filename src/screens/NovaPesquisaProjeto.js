@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {app, storage} from '../firebase/config';
+import {db, storage} from '../firebase/config';
 import {
   collection,
   initializeFirestore,
@@ -24,190 +24,156 @@ import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {uploadBytes, ref, getDownloadURL} from 'firebase/storage';
 
 const NovaPesquisaProjeto = props => {
-  const [nome, setNome] = useState('');
-  const [data, setData] = useState('');
-  const [nomeErro, setNomeErro] = useState('');
-  const [dataErro, setDataErro] = useState('');
-  const [listaPesquisas, setListaPesquisas] = useState('');
+  const [txtNome, setTxtNome] = useState('');
+  const [txtData, setTxtData] = useState('');
+  const [txtDataError, setTxtDataError] = useState('');
+  const [txtNomeError, setTxtNomeError] = useState('');
+  const [fotoError, setFotoError] = useState('');
   const [urlFoto, setUrlFoto] = useState('');
   const [foto, setFoto] = useState();
 
-  const goToHomeProjetoDrawer = () => {
-    props.navigation.navigate('Drawer');
-  };
+  const pesquisaCollection = collection(db, 'pesquisas');
 
-  const validar = async () => {
-    if (nome.length === 0 && data.length === 0) {
-      setNomeErro('Nome esta vazio.');
-      setDataErro('Data esta vazia.');
-    } else if (data.length === 0) {
-      setDataErro('Data esta vazia.');
-      setNomeErro('');
-    } else if (nome.length === 0) {
-      setNomeErro('Nome esta vazio.');
-      setDataErro('');
+  const addPesquisa = async () => {
+    if (!txtNome) {
+      setTxtNomeError('Preencha o nome da pesquisa');
+    } else if (!txtData || txtData.length < 10) {
+      setTxtDataError('Preencha a data');
+    } else if (!foto) {
+      setFotoError('Selecione uma imagem');
     } else {
-      const imageRef = ref(storage, 'minhaImagem.png');
+      setTxtDataError(null);
+      setTxtNomeError(null);
+      setFotoError(null);
+
+      const imageRef = ref(storage, 'pesquisas/' + txtNome + '.jpg');
       const file = await fetch(urlFoto);
       const blob = await file.blob();
+
       uploadBytes(imageRef, blob, {contentType: 'image/jpeg'})
-        .then(() => {
-          console.log('Arquivo enviado com sucesso.');
-          getDownloadURL(imageRef)
-          .then(
-            (url) => {
-              
-            }
-          )
-          .catch(
-            (error) => {
-              console.log('Erro ao pegar URL: ' + JSON.stringify(error))
-            }
-          )
+        .then(result => {
+          console.log('Imagem enviada com sucesso!');
+          getDownloadURL(imageRef).then(url => {
+            const docPesquisa = {
+              nome: txtNome,
+              data: txtData,
+              imageUrl: url,
+              votos: {
+                pessimo: 0,
+                ruim: 0,
+                neutro: 0,
+                bom: 0,
+                excelente: 0,
+              },
+            };
+
+            addDoc(pesquisaCollection, docPesquisa)
+              .then(docRef => {
+                console.log('Pesquisa adicionada com sucesso!' + docRef.id);
+                props.navigation.navigate('Pesquisas');
+              })
+              .catch(error => {
+                console.log('Erro ao adicionar pesquisa: ' + error);
+              });
+          });
         })
         .catch(error => {
-          console.log('Erro ao enviar o arquivo: ' + JSON.stringify(error));
+          console.log('Erro ao enviar imagem: ' + error);
         });
-      addPesquisa();
-      goToHomeProjetoDrawer();
     }
   };
 
-  useEffect(() => {
-    const q = query(pesquisaCollection);
-
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const pesquisas = [];
-      snapshot.forEach(doc => {
-        pesquisas.push({
-          id: doc.id,
-          ...doc.data(),
-        });
-      });
-
-      setListaPesquisas(pesquisas);
-    });
-  }, []);
-
-  const addPesquisa = () => {
-    const docPesquisa = {
-      nome: nome,
-      data: data,
-    };
-
-    addDoc(pesquisaCollection, docPesquisa)
-      .then(docRef => {
-        console.log('Novo documento inserido com sucesso: ' + docRef.id);
-      })
-      .catch(erro => {
-        console.log('Erro: ' + erro);
-      });
-  };
-
-  const itemPesquisa = ({item}) => {
-    return (
-      <TouchableOpacity
-        onPress={() => {
-          changePesquisa(item.id); //So mudar para changePesquisa p deletePesquisa para deletar
-        }}>
-        <Text>
-          Id: {item.id} Nome: {item.nome} Data: {item.data}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const changePesquisa = id => {
-    const pesquisaRef = doc(db, 'pesquisas', id);
-
-    updateDoc(pesquisaRef, {
-      nome: 'Zapzap',
-      data: '21/02/2024',
-    });
-  };
-
-  const deletePesquisa = id => {
-    deleteDoc(doc(db, 'pesquisas', id));
-  };
-
-  const capturarImagem = () => {
-    launchCamera({mediaType: 'photo', cameraType: 'back', quality: 1})
-      .then(result => {
-        setUrlFoto(result.assets[0].uri);
-        setFoto(result.assets[0]);
-      })
-
-      .catch(error => {
-        console.log('Erro ao capturar imagem: ' + JSON.stringify(error));
-      });
-  };
-
-  const selecionarImagemGaleria = () => {
+  const selecionarFoto = () => {
     launchImageLibrary()
       .then(result => {
         setUrlFoto(result.assets[0].uri);
         setFoto(result.assets[0]);
       })
-
       .catch(error => {
-        console.log('Erro ao capturar imagem: ' + JSON.stringify(error));
+        console.log('Erro ao selecionar foto: ' + JSON.stringify(error));
       });
   };
 
-  const db = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-  });
-  const pesquisaCollection = collection(db, 'pesquisas');
+  const capturarFoto = () => {
+    launchCamera({
+      mediaType: 'photo',
+      cameraType: 'back',
+      quality: 1,
+    })
+      .then(result => {
+        setUrlFoto(result.assets[0].uri);
+        setFoto(result.assets[0]);
+      })
+      .catch(error => {
+        console.log('Erro ao capturar foto: ' + JSON.stringify(error));
+      });
+  };
+
+  const goToHomeProjetoDrawer = () => {
+    props.navigation.navigate('HomeProjeto');
+  };
+
+  const validar = async () => {
+    if (txtNome.length === 0 && txtData.length === 0) {
+      setTxtNomeError('Nome esta vazio.');
+      setTxtDataError('Data esta vazia.');
+    } else if (txtData.length === 0) {
+      setTxtDataError('Data esta vazia.');
+      setTxtNomeError('');
+    } else if (txtNome.length === 0) {
+      setTxtNomeError('Nome esta vazio.');
+      setTxtDataError('');
+    } else {
+      addPesquisa();
+      goToHomeProjetoDrawer();
+    }
+  };
 
   return (
     <View style={estilos.view}>
-      <View>
-        <FlatList
-          data={listaPesquisas}
-          renderItem={itemPesquisa}
-          keyExtractor={pesquisa => pesquisa.id}
-        />
-      </View>
       <Text style={estilos.texto}>Nome</Text>
       <TextInput
         style={estilos.textInput}
-        value={nome}
-        onChangeText={setNome}
+        value={txtNome}
+        onChangeText={setTxtNome}
       />
       <Text style={{color: '#FD7979', fontFamily: 'AveriaLibre-Regular'}}>
-        {nomeErro}
+        {txtNomeError}
       </Text>
       <Text style={estilos.texto}>Data</Text>
       <View style={estilos.data}>
         <TextInput
           style={estilos.textInput}
-          value={data}
-          onChangeText={setData}
+          value={txtData}
+          onChangeText={setTxtData}
         />
         <Icon name="calendar-month-outline" size={45} color="#A3A3A3" />
       </View>
       <Text style={{color: '#FD7979', fontFamily: 'AveriaLibre-Regular'}}>
-        {dataErro}
+        {txtDataError}
       </Text>
       <Text style={estilos.texto}>Imagem</Text>
+      {urlFoto ? null : (
+        <TextInput
+          style={estilos.textInputImagem}
+          value="Câmera/Galeria"
+          editable={false}
+        />
+      )}
+      {urlFoto ? (
+        <Image source={{uri: urlFoto}} style={estilos.imagem} />
+      ) : null}
       <TouchableOpacity
         style={{backgroundColor: '#3F92C5', marginVertical: 10}}
-        onPress={capturarImagem}>
+        onPress={capturarFoto}>
         <Text style={estilos.textoBotao}>Capturar Imagem</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={{backgroundColor: '#3F92C5', marginVertical: 10}}
-        onPress={selecionarImagemGaleria}>
+        onPress={selecionarFoto}>
         <Text style={estilos.textoBotao}>Selecionar Imagem da Galeria</Text>
       </TouchableOpacity>
-      {urlFoto ? (
-        <Image
-          style={estilos.imagem}
-          source={{
-            uri: urlFoto,
-          }}
-        />
-      ) : null}
+      {fotoError ? <Text style={styles.errorText}>{fotoError}</Text> : null}
       <TouchableOpacity
         style={{backgroundColor: '#37BD6D', marginVertical: 10}}
         onPress={validar}>
@@ -275,6 +241,21 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     margin: 20,
+  },
+  textInputImagem: {
+    padding: 10,
+    fontSize: 20,
+    borderWidth: 1,
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffff',
+    color: 'gray',
+    width: '60%',
+    height: 50,
+  },
+  imagem: {
+    marginVertical: 10,
+    height: 150,
+    width: 150,
   },
 });
 

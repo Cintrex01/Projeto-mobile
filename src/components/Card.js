@@ -9,7 +9,7 @@ const Card = props => {
 
   return (
     <View style={estilos.fundo}>
-      <TouchableOpacity onPress={props.funcao}>
+      <TouchableOpacity style={estilos.card} onPress={props.funcao}>
         <Image style={estilos.imagem} source={{uri: imagem}} />
         <Text style={estilos.texto}>{texto}</Text>
         <Text style={estilos.data}>{data}</Text>
@@ -19,30 +19,33 @@ const Card = props => {
 };
 
 const estilos = StyleSheet.create({
-  fundo: {
-    width: 150,
-    height: 150,
-    backgroundColor: '#FFFFFF',
-    marginVertical: 50,
-    marginRight: 10,
-    flexDirection: 'column',
-    justifyContent: 'space-around',
+  card: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 15,
+  },
+  fundo: {
+    marginTop: 30,
+    width: 160,
+    height: 140,
+    backgroundColor: '#ffffff',
+    marginRight: 15,
   },
   texto: {
-    fontSize: 30,
+    fontSize: 16,
     color: '#3F92C5',
-    textAlign: 'center',
     fontFamily: 'AveriaLibre-Regular',
+    marginTop: 10,
   },
   imagem: {
-    height: 50,
-    width: 50,
+    width: '90%',
+    height: '70%',
   },
   data: {
-    fontSize: 15,
-    color: '#A3A3A3',
-    textAlign: 'center',
+    fontSize: 10,
+    color: 'grey',
     fontFamily: 'AveriaLibre-Regular',
   },
 });

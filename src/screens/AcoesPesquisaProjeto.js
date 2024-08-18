@@ -1,7 +1,17 @@
 import {View, Text, TouchableOpacity, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/AntDesign';
+import {useSelector} from 'react-redux';
+import React, {useEffect, useState} from 'react';
 
 const AcoesPesquisaProjeto = props => {
+  const nome = useSelector(state => state.pesquisa.nome);
+
+  useEffect(() => {
+    props.navigation.setOptions({
+      title: nome,
+    });
+  }, [nome, props.navigation]);
+
   const goToRelatorioProjeto = () => {
     props.navigation.navigate('RelatorioProjeto');
   };

@@ -9,11 +9,15 @@ import {useState} from 'react';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import {signInWithEmailAndPassword} from 'firebase/auth';
 import {auth_mod} from '../firebase/config';
+import {useDispatch} from 'react-redux';
+import {reducerSetLogin} from '../redux/loginSlice';
 
 const LoginProjeto = props => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [erro, setErro] = useState('');
+
+  const dispatch = useDispatch();
 
   const valida = () => {
     if (!email.includes('@')) {
@@ -27,18 +31,20 @@ const LoginProjeto = props => {
     } else {
       setErro('');
       autenticar();
-      goToHome();
     }
   };
 
   const autenticar = () => {
     signInWithEmailAndPassword(auth_mod, email, password)
       .then(userLogged => {
+        dispatch(reducerSetLogin({email: email, password: password}));
+        goToHome();
         console.log(
           'Usuário autenticado com sucesso: ' + JSON.stringify(userLogged),
         );
       })
       .catch(error => {
+        setErro('Email e/ou senha inválidos');
         console.log('Falha ao autenticar o usuário: ' + JSON.stringify(error));
       });
   };
@@ -52,7 +58,7 @@ const LoginProjeto = props => {
   };
 
   const goToHome = () => {
-    props.navigation.navigate('Drawer');
+    props.navigation.navigate('HomeProjeto');
   };
 
   return (
